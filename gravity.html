@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Gravity</title>
+    <style>
+        /* ================================
+           CSS Styles
+        ================================= */
+
+        /* Reset default margins and paddings */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Hide scrollbars */
+            background-color: #f2f2f2;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* Container for Google Logo */
+        #google-logo {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: pointer;
+            transition: transform 0.5s ease;
+        }
+
+        #google-logo img {
+            width: 272px;
+            height: 92px;
+        }
+
+        /* Container for Search Bar */
+        #search-bar {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            transition: transform 0.5s ease;
+        }
+
+        #search-input {
+            width: 400px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #dcdcdc;
+            border-radius: 24px 0 0 24px;
+            outline: none;
+        }
+
+        #search-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: 1px solid #dcdcdc;
+            border-left: none;
+            background-color: #f8f8f8;
+            border-radius: 0 24px 24px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #search-button:hover {
+            background-color: #e8e8e8;
+        }
+
+        /* Container for Links */
+        #links {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: transform 0.5s ease;
+        }
+
+        #links a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: #5f6368;
+            font-size: 14px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        #links a:hover {
+            color: #1a73e8;
+        }
+
+        /* Styles for falling elements */
+        .falling {
+            position: absolute;
+            transition: none; /* Remove transitions for physics simulation */
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- ================================
+           HTML Structure
+    ================================= -->
+
+    <!-- Google Logo -->
+    <div id="google-logo">
+        <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" alt="Google Logo">
+    </div>
+
+    <!-- Search Bar -->
+    <div id="search-bar">
+        <input type="text" id="search-input" placeholder="Search Google">
+        <button id="search-button">Google Search</button>
+    </div>
+
+    <!-- Navigation Links -->
+    <div id="links">
+        <a href="#">About</a>
+        <a href="#">Store</a>
+        <a href="#">Gmail</a>
+        <a href="#">Images</a>
+    </div>
+
+    <!-- ================================
+           JavaScript Functionality
+    ================================= -->
+    <script>
+        // Configuration for gravity simulation
+        const config = {
+            gravity: 0.5,              // Acceleration due to gravity
+            friction: 0.8,             // Friction coefficient for bounces
+            elements: [],              // Array to store elements affected by gravity
+            floor: window.innerHeight - 20 // Y-coordinate representing the floor
+        };
+
+        // Initialize elements once the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const logo = document.getElementById('google-logo');
+            const searchBar = document.getElementById('search-bar');
+            const links = document.getElementById('links').children;
+
+            // Populate the elements array with logo, search bar, and links
+            config.elements.push(...[logo, searchBar, ...links]);
+
+            // Add event listener to start gravity when the body is clicked
+            document.body.addEventListener('click', startGravity);
+        });
+
+        // Variables to manage animation state
+        let animationId;
+        let started = false;
+
+        // Function to initiate gravity effect
+        function startGravity() {
+            if (started) return; // Prevent multiple initiations
+            started = true;
+
+            // Add 'falling' class to all elements to enable absolute positioning
+            config.elements.forEach(el => el.classList.add('falling'));
+
+            // Initialize physics properties for each element
+            config.elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                el.physics = {
+                    velocity: 0,                // Current velocity
+                    position: rect.top          // Current top position
+                };
+            });
+
+            // Start the animation loop
+            animationId = requestAnimationFrame(updateGravity);
+        }
+
+        // Function to update gravity on each animation frame
+        function updateGravity() {
+            config.elements.forEach(el => {
+                // Apply gravity to velocity
+                el.physics.velocity += config.gravity;
+
+                // Update position based on velocity
+                el.physics.position += el.physics.velocity;
+
+                // Collision detection with the floor
+                if (el.physics.position + el.offsetHeight >= config.floor) {
+                    el.physics.position = config.floor - el.offsetHeight; // Reset position to floor
+                    el.physics.velocity *= -config.friction;             // Reverse and reduce velocity to simulate bounce
+
+                    // If velocity is negligible, stop the element
+                    if (Math.abs(el.physics.velocity) < 1) {
+                        el.physics.velocity = 0;
+                    }
+                }
+
+                // Update the element's top position
+                el.style.top = `${el.physics.position}px`;
+            });
+
+            // Determine if any element is still moving or has not reached the floor
+            const anyMoving = config.elements.some(el => 
+                el.physics.velocity !== 0 || el.getBoundingClientRect().top + el.offsetHeight < config.floor
+            );
+
+            // Continue the animation loop if necessary
+            if (anyMoving) {
+                animationId = requestAnimationFrame(updateGravity);
+            } else {
+                cancelAnimationFrame(animationId); // Stop the animation when done
+            }
+        }
+
+        // Update the floor position if the window is resized
+        window.addEventListener('resize', () => {
+            config.floor = window.innerHeight - 20;
+        });
+    </script>
+</body>
+</html>
